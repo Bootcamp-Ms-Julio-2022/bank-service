@@ -219,10 +219,37 @@ public class BankController {
     }
 
     //    OPERATIONS ********
+    // -------------------Otorgar producto (activo/pasivo) a cliente
+
     @PostMapping("/operations/grantproduct")
     public Flux<Purchase> grantProductToCustomer(@RequestParam(value = "customerDocNumber") String customerDocNumber,
                                                  @RequestParam(value = "productCategory") String productCategory) {
         return bankService.grantProductToCustomer(customerDocNumber, productCategory);
+    }
+
+    // -------------------Mostrar adquisiciones de cliente
+
+    @GetMapping("/operations/displaypurchases/{id}")
+    public Flux<Purchase> displayCustomerPurchases(@PathVariable("id") String id) {
+        return bankService.displayCustomerPurchases(id);
+    }
+
+    // -------------------Depositar
+
+    @PostMapping("/operations/deposit")
+    public Flux<Transaction> deposit(@RequestParam(value = "customerId") String customerId,
+                                     @RequestParam(value = "purchaseId") String purchaseId,
+                                     @RequestParam(value = "amount") double amount) {
+        return bankService.deposit(customerId, purchaseId, amount);
+    }
+
+    // -------------------Retirar
+
+    @PostMapping("/operations/withdraw")
+    public Flux<Transaction> withdraw(@RequestParam(value = "customerId") String customerId,
+                                     @RequestParam(value = "purchaseId") String purchaseId,
+                                     @RequestParam(value = "amount") double amount) {
+        return bankService.deposit(customerId, purchaseId, amount);
     }
 
 }

@@ -40,5 +40,8 @@ public interface BankService {
 
     //    OPERATIONS
     Flux<Purchase> grantProductToCustomer(String customerDocNumber, String productCategory);
+    Flux<Purchase> displayCustomerPurchases(String customerId);
+    Flux<Transaction> deposit(String customerId, String purchaseId, double amount);
+    Flux<Transaction> withdraw(String customerId, String purchaseId, double amount);
 
 }

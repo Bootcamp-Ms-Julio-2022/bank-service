@@ -11,6 +11,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 @Slf4j
 @Service
 public class BankServiceImpl implements BankService {
@@ -236,17 +238,14 @@ public class BankServiceImpl implements BankService {
                 .next()
                 .flatMap(customer -> {
                     String customerType = customer.getCustomerType().toString();
-                    switch (customerType) {
-                        case "PERSON":
-                            if (customer.getOwnedPasiveProductsQty() > 1) {
-                                log.info("Customer exceeded allowed quantity of pasive products");
-                            }
-                            else {
-                                customer.setOwnedPasiveProductsQty(customer.getOwnedPasiveProductsQty() + 1);
-                            }
-                            break;
-                        case "ENTERPRISE":
+                    if (productCategory.equalsIgnoreCase("CUENTA_BANCARIA_AHORRO") ||
+                    productCategory.equalsIgnoreCase("CUENTA_BANCARIA_CUENTA_CORRIENTE") ||
+                            productCategory.equalsIgnoreCase("CUENTA_BANCARIA_PLAZO_FIJO")) {
+                        customer.setOwnedPasiveProductsQty(customer.getOwnedPasiveProductsQty() + 1);
+                    } else {
+                        customer.setOwnedActiveProductsQty(customer.getOwnedActiveProductsQty() + 1);
                     }
+
                     purchase.setCustomerId(customer.getId());
                     purchase.setCustomerType(customer.getCustomerType().toString());
                     purchase.setCustomerName(customer.getName());
@@ -264,5 +263,63 @@ public class BankServiceImpl implements BankService {
                             return savePurchase(purchase);
                         }));
 
+    }
+
+    @Override
+    public Flux<Transaction> deposit(String customerId, String purchaseId, double amount) {
+        Transaction transaction = new Transaction();
+
+        return webClient.get()
+                .uri(CUSTOMERS_URI + "/just/" + customerId)
+                .retrieve()
+                .bodyToFlux(Customer.class)
+                .next()
+                .flatMap(customer -> {
+                    transaction.setCustomerId(customer.getId());
+                    transaction.setTransactionType("DEPOSIT");
+                    transaction.setAmount(amount);
+                    return Mono.just(transaction);
+                })
+                .concatWith(webClient.get()
+                        .uri(PURCHASES_URI + "/customer/" + customerId)
+                        .retrieve()
+                        .bodyToFlux(Purchase.class)
+                        .flatMap(purchase -> {
+                            transaction.setPurchaseId(purchase.getId());
+                            return saveTransaction(transaction);
+                        }));
+    }
+
+    @Override
+    public Flux<Transaction> withdraw(String customerId, String purchaseId, double amount) {
+        Transaction transaction = new Transaction();
+
+        return webClient.get()
+                .uri(CUSTOMERS_URI + "/just/" + customerId)
+                .retrieve()
+                .bodyToFlux(Customer.class)
+                .next()
+                .flatMap(customer -> {
+                    transaction.setCustomerId(customer.getId());
+                    transaction.setTransactionType("WITHDRAWAL");
+                    transaction.setAmount(amount);
+                    return Mono.just(transaction);
+                })
+                .concatWith(webClient.get()
+                        .uri(PURCHASES_URI + "/customer/" + customerId)
+                        .retrieve()
+                        .bodyToFlux(Purchase.class)
+                        .flatMap(purchase -> {
+                            transaction.setPurchaseId(purchase.getId());
+                            return saveTransaction(transaction);
+                        }));
+    }
+
+    @Override
+    public Flux<Purchase> displayCustomerPurchases(String customerId) {
+        return webClient.get()
+                .uri(PURCHASES_URI + "/customer/" + customerId)
+                .retrieve()
+                .bodyToFlux(Purchase.class);
     }
 }
